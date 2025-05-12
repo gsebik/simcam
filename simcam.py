@@ -8,11 +8,14 @@ import select
 
 # CONFIG
 USE_EDGE_DETECTION = True
-#USE_EDGE_DETECTION = False
 INVERT_PIXELS = False
 target_width = 128
-target_height = 32
+#target_height = 32
+target_height = 19
+CONSOL_DEBUG=True
 
+
+mirror_horizontal = False
 # Initial crop height
 virtual_crop_height = 128  # how much vertical window to grab
 min_crop_height = 32      # minimum crop
@@ -20,19 +23,29 @@ max_crop_height = 480     # maximum crop (adjust if needed based on camera)
 
 cap = cv2.VideoCapture(0)
 
+#display = 'ssd1306'
+display = 'buse'
+
+fb_device = '/dev/fb0'
+#fb_device = '/dev/fb1'
+
+
 # Framebuffer open
 try:
-    fb = open('/dev/fb0', 'wb')
+    fb = open(fb_device, 'wb')
     use_fb = True
 except Exception as e:
     print(f"Warning: could not open /dev/fb0: {e}")
     use_fb = False
 
 # Terminal setup
-orig_settings = termios.tcgetattr(sys.stdin)
-tty.setcbreak(sys.stdin)
+if sys.stdin.isatty():
+    orig_settings = termios.tcgetattr(sys.stdin)
+    tty.setcbreak(sys.stdin)
+else:
+    orig_settings = None  # no terminal attached
+    CONSOL_DEBUG=False
 
-mirror_horizontal = False
 
 def key_pressed():
     dr, dw, de = select.select([sys.stdin], [], [], 0)
@@ -80,13 +93,14 @@ try:
             bw = 1 - bw
 
         # ==== Terminal Display ====
-        print("\033c", end="")
-        print(f"Mirror: {mirror_horizontal} | Crop Height: {virtual_crop_height}")
-        for y in range(target_height):
-            line = ''
-            for x in range(target_width):
-                line += '#' if bw[y, x] else ' '
-            print(line)
+        if CONSOL_DEBUG:
+            print("\033c", end="")
+            print(f"Mirror: {mirror_horizontal} | Crop Height: {virtual_crop_height}")
+            for y in range(target_height):
+                line = ''
+                for x in range(target_width):
+                    line += '#' if bw[y, x] else ' '
+                print(line)
 
         # ==== Framebuffer Write ====
         if use_fb:
@@ -96,8 +110,11 @@ try:
             def reverse_bits(byte):
                 return int('{:08b}'.format(byte)[::-1], 2)
 
-            # Apply to all bytes
-            packed_reversed = np.vectorize(reverse_bits)(packed).astype(np.uint8)
+            # Reverese every 8 bit vertically for SSD1306 devices
+            if display == 'ssd1306':
+                packed_reversed = np.vectorize(reverse_bits)(packed).astype(np.uint8)
+            else:
+                packed_reversed = packed.astype(np.uint8)
 
             if packed.shape == (target_height, target_width // 8):
                 fb.seek(0)
