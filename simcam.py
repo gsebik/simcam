@@ -12,14 +12,16 @@ INVERT_PIXELS = False
 target_width = 128
 #target_height = 32
 target_height = 19
-CONSOL_DEBUG=True
+CONSOL_DEBUG=False
+REFRESH_RATE = 30
 
-
-mirror_horizontal = False
+mirror_horizontal = True
 # Initial crop height
 virtual_crop_height = 128  # how much vertical window to grab
 min_crop_height = 32      # minimum crop
 max_crop_height = 480     # maximum crop (adjust if needed based on camera)
+
+cv2.setNumThreads(2)
 
 cap = cv2.VideoCapture(0)
 
@@ -147,7 +149,7 @@ try:
                 break
         #print("bw shape:", bw.shape, "bw min/max:", bw.min(), bw.max())
         #print("packed shape:", packed.shape, "packed size:", len(packed.tobytes()))
-        time.sleep(0.001)
+        time.sleep(1/REFRESH_RATE)
 
 finally:
     termios.tcsetattr(sys.stdin, termios.TCSADRAIN, orig_settings)
