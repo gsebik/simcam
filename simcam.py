@@ -12,7 +12,7 @@ INVERT_PIXELS = False
 target_width = 128
 #target_height = 32
 target_height = 19
-CONSOL_DEBUG=False
+CONSOL_DEBUG=True
 REFRESH_RATE = 30
 
 mirror_horizontal = True
@@ -21,7 +21,7 @@ virtual_crop_height = 128  # how much vertical window to grab
 min_crop_height = 32      # minimum crop
 max_crop_height = 480     # maximum crop (adjust if needed based on camera)
 
-cv2.setNumThreads(2)
+cv2.setNumThreads(4)
 
 cap = cv2.VideoCapture(0)
 
@@ -112,11 +112,9 @@ try:
             def reverse_bits(byte):
                 return int('{:08b}'.format(byte)[::-1], 2)
 
-            # Reverese every 8 bit vertically for SSD1306 devices
-            if display == 'ssd1306':
-                packed_reversed = np.vectorize(reverse_bits)(packed).astype(np.uint8)
-            else:
-                packed_reversed = packed.astype(np.uint8)
+            # Reverse bits inside each byte:
+            # np.packbits is MSB-first, but both ssd1306 and buse drivers use LSB-first
+            packed_reversed = np.vectorize(reverse_bits)(packed).astype(np.uint8)
 
             if packed.shape == (target_height, target_width // 8):
                 fb.seek(0)
